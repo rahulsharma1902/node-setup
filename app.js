@@ -5,36 +5,46 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 
 const app = express();
-require('./src/config/mongoose').connect();
+require('./src/config/mongoose').connect(); // connect to DB first
 
-const errorHandler = require('./src/utils/error-handler');
+const config = require('./src/config/config');
+const { ErrorHandler } = require('./src/utils/error-handler');
 
-const PORT = process.env.PORT || 5000;
-
-
-// ----------------------------Middleware for catching 404 and forward to error handler
-// app.use((req, res, next) => {
-//   const error = new Error(errorHandler.ERROR_404);
-//   error.statusCode = 4404;
-//   next(error);
-// });
+// ✅ ROUTES
+const userRoutes = require('./src/routes/user-routes');
 
 
-// Middleware
+// ✅ MIDDLEWARES – must be added early
 app.use(cors());
 app.use(bodyParser.json());
 
-// Sample route
+// ✅ Sample home route
 app.get('/', (req, res) => {
-  res.send('hey dev your api is running...');
+  // res.send('hey dev your api is running...');
+  res.json({ message: 'Hey dev your api is running...' });
+
 });
 
 
+// Example: if config.server.route = 'api' in .env → route becomes: /api/
+app.use(`/${config.server.route}/user`, userRoutes);
 
+// ✅ 404 handler (after all routes)
+app.use((req, res, next) => {
+  next(new ErrorHandler(404, 'Route not found'));
+});
 
-// Routes placeholder
-// app.use('/api/lawyers', require('./routes/lawyersRoute'))
+// ✅ Global error handler
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(err.statusCode || 500).json({
+    error: true,
+    message: err.message || 'Something went wrong',
+  });
+});
 
+// ✅ Server start
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
